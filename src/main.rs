@@ -6,7 +6,7 @@ fn main() {
     app.add_plugins(DefaultPlugins);
 
     app.add_systems(Startup, setup);
-    app.add_systems(Update, move_circle);
+    app.add_systems(FixedUpdate, move_circle);
 
     app.run();
 }
@@ -18,7 +18,7 @@ fn setup(
     ) 
 {
     commands.spawn(Camera2d);
-    let circle = Mesh2d(meshes.add(Circle::new(100.)));
+    let circle = Mesh2d(meshes.add(Circle::new(10.)));
     let cir_mat = MeshMaterial2d(materials.add(Color::from(basic::PURPLE)));
     let transform = Transform::from_xyz(0., 0., 0.);
 
