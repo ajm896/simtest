@@ -1,5 +1,8 @@
+use std::f32::consts::TAU;
+
 use bevy::color::palettes::basic;
 use bevy::prelude::*;
+use rand::{rng, Rng};
 
 #[derive(Component, Deref, DerefMut)]
 struct Position(Vec3);
@@ -35,7 +38,7 @@ fn main() {
     }));
 
     app.add_systems(Startup, (setup, make_ball, make_paddle, make_cpu_paddle));
-    app.add_systems(Update, move_ball);
+    app.add_systems(Update, (move_ball, move_player));
 
     app.run();
 }
@@ -44,9 +47,11 @@ fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
 }
 
-fn move_ball(mut gizmos: Gizmos, 
+fn move_ball(
+    mut gizmos: Gizmos,
     mut ball: Query<(&mut Velocity, &mut Transform), With<Ball>>,
-    paddles : Query<(&Collider, &Transform), Without<Ball>>) {
+    paddles: Query<(&Collider, &Transform), Without<Ball>>,
+) {
     for (mut velocity, mut transform) in &mut ball {
         // Move ball
         transform.translation += velocity.0.extend(0.);
@@ -75,19 +80,28 @@ fn move_ball(mut gizmos: Gizmos,
             let paddle_x = paddle_loc.translation.x;
             let paddle_y = paddle_loc.translation.y;
 
-            let paddle_top = paddle_y + PADDLE_HEIGHT/2.;
-            let paddle_bottom = paddle_y - PADDLE_HEIGHT/2.;
+            let paddle_top = paddle_y + PADDLE_HEIGHT / 2.;
+            let paddle_bottom = paddle_y - PADDLE_HEIGHT / 2.;
 
-            let ball_top = ball_y + BALL_SIZE/2.;
-            let ball_bottom = ball_y - BALL_SIZE/2.;
+            let ball_top = ball_y + BALL_SIZE / 2.;
+            let ball_bottom = ball_y - BALL_SIZE / 2.;
 
-            let collision_x = ball_x == paddle_x; 
+            let collision_x = ball_x == paddle_x;
             let collision_y = ball_top < paddle_top && ball_bottom > paddle_bottom;
 
             if collision_x && collision_y {
-               velocity.0 = -velocity.0 
+                velocity.0 = -velocity.0
             }
         }
+    }
+}
+fn move_player(input: Res<ButtonInput<KeyCode>>, mut player: Single<&mut Transform, With<Player>>) {
+    if input.pressed(KeyCode::ArrowUp) {
+        player.translation.y += BALL_SPEED;
+    }
+    
+    if input.pressed(KeyCode::ArrowDown) {
+        player.translation.y -= BALL_SPEED;
     }
 }
 
@@ -96,11 +110,13 @@ fn make_ball(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
+    let mut rng = rng();
     let shape = Rectangle::new(BALL_SIZE, BALL_SIZE);
     let ball = Mesh2d(meshes.add(shape));
     let ball_mat = MeshMaterial2d(materials.add(Color::from(basic::WHITE)));
     let transform = Transform::from_xyz(0., 0., 0.);
-    let init_vel = Velocity(vec2(1., 1.) * BALL_SPEED);
+    let direction: Vec2 = vec2(rng.random_range(0.0..TAU), rng.random_range(0.0..TAU));
+    let init_vel = Velocity(BALL_SPEED * direction.normalize());
 
     commands.spawn((ball, ball_mat, transform, init_vel, Ball));
 }
@@ -114,9 +130,9 @@ fn make_paddle(
     let paddle = Mesh2d(meshes.add(shape));
     let paddle_mat = MeshMaterial2d(materials.add(Color::from(basic::WHITE)));
     let transform = Transform::from_xyz(350., 0., 0.);
-    let init_vel = Velocity(vec2(0., 0.));
+    let init_vel = Velocity(Vec2::ZERO);
 
-    commands.spawn((paddle, paddle_mat, transform, init_vel, Paddle, Collider));
+    commands.spawn((Player,paddle, paddle_mat, transform, init_vel, Paddle, Collider));
 }
 
 fn make_cpu_paddle(
@@ -128,7 +144,7 @@ fn make_cpu_paddle(
     let paddle = Mesh2d(meshes.add(shape));
     let paddle_mat = MeshMaterial2d(materials.add(Color::from(basic::WHITE)));
     let transform = Transform::from_xyz(-350., 0., 0.);
-    let init_vel = Velocity(vec2(0., 0.));
+    let init_vel = Velocity(Vec2::ZERO);
 
     commands.spawn((paddle, paddle_mat, transform, init_vel, Paddle, Collider));
 }
